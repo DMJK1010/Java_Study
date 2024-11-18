@@ -1,6 +1,6 @@
 // CH8_4: Main.java
 //
-//  Created on: 2024.11. 18.
+//  Created on: 2024.11. 19.
 //      Author: Junha Kim
 //
 //  + FileManager 메뉴 항목 및 멤버 함수, BINARY_PATH_NAME 추가
@@ -13,6 +13,7 @@
 //  + Factory::outputPerson(PrintStream, Person) 멤버 추가
 //  + Factory::outputPerson(DataOutputStream, Person) 멤버 추가
 //
+//++2024.11.19(12:18) 완료
 
 import java.util.*;
 import java.io.*;
@@ -314,6 +315,7 @@ class Person implements Comparable< Person > // interface 7_1
          boolean married, String address, SmartPhone smartPhone) {
      set(name, "", id, weight, married, address, smartPhone);
  }
+ public Person(DataInputStream in) throws IOException { inputMembers(in); } // 8_4
  /*
  public void println() { 
      print(); System.out.println(); 
@@ -413,6 +415,16 @@ class Person implements Comparable< Person > // interface 7_1
      // 양쪽의 : :를 제거한 서브 문자열을 넘겨 받음	 
      set(name, "", id, weight, married, address, null); // 8_3
  }
+ private void inputMembers(DataInputStream in) throws IOException { // 8_4
+	 set(in.readUTF(), "",in.readInt(), in.readDouble(), in.readBoolean(), in.readUTF(), null);
+     /* ToDo: 
+     강의노트 끝 부분의 "바이너리 파일에 기본 타입 변수들 읽기" 페이지를 참고하여
+     이진 파일에 저장된 name, id, weight, married, address 멤버들을 
+     순서적으로 읽어 들여라. 
+     inputMembers(Scanner sc)을 참고하여 set() 함수를 호출하라.
+     (이 set() 함수는 smartPhone, memo 멤버을 초기화하기 위함이다.)
+     */ 
+ }
  /*
  private void printMembers() {
 	 System.out.print(name+" "+id+" "+weight+" "+married+" :"+address+": ");
@@ -448,6 +460,7 @@ class Student extends Person { // TODO: Person 클래스를 상속하라.
 	 //System.out.print("Student(s): "); printMembers(); System.out.println();
  }
  public Student(Scanner sc) { super(sc); inputMembers(sc); }
+ public Student(DataInputStream in) throws IOException { super(in); inputMembers(in); } // 8_4
  // getter and setter
  public String getDepartment()	{ return department; }
  public double getGPA()			{ return GPA; }
@@ -518,10 +531,14 @@ class Student extends Person { // TODO: Person 클래스를 상속하라.
  }
  */
  private void inputMembers(Scanner sc) {
-	 department = sc.next();
-	 GPA = sc.nextDouble();
-	 year = sc.nextInt();
+	 //department = sc.next();
+	 //GPA = sc.nextDouble();
+	 //year = sc.nextInt();
+	 set(sc.next(), sc.nextDouble(), sc.nextInt());	// 8_4하는 도중 수정함
  }
+ private void inputMembers(DataInputStream in) throws IOException { // 8_4
+	 set(in.readUTF(), in.readDouble(), in.readInt());
+ } 
  // 새로 추가된 메소드
  public void study() { 
      System.out.println(getName()+" is studying as a "+year+"-year student in "+department); 
@@ -556,7 +573,7 @@ class Worker extends Person {
 	 //System.out.print("Worker(w): "); printMembers(); System.out.println();
  }
  public Worker(Scanner sc) { super(sc); inputMembers(sc); }
- 
+ public Worker(DataInputStream in) throws IOException { super(in); inputMembers(in); } // 8_4
  // getter and setter
  public String getCompany()		{ return company; }
  public String getPosition()	{ return position; }
@@ -623,8 +640,12 @@ class Worker extends Person {
  }
  */
  private void inputMembers(Scanner sc) {
-	 company = sc.next();
-	 position = sc.next();
+	 //company = sc.next();
+	 //position = sc.next();
+	 set(sc.next(), sc.next()); // 8_4에서 수정함
+ }
+ private void inputMembers(DataInputStream in) throws IOException { // 8_4
+	 set(in.readUTF(), in.readUTF());
  }
  // 새로 추가된 메소드
  public void work() { 
@@ -1500,6 +1521,23 @@ class Factory
      FileManager::saveTextFile(...) 함수 내의 for 문 안쪽에 있는 코드를 
      여기로 옮겨라. for 문 전체가 아니다. 
      즉, 이 함수는 하나의 객체 t를 텍스트 형식으로 출력하는 함수이다.
+     */
+ }
+ static public Person inputPerson(DataInputStream dataIn) throws IOException { // 8_4
+     char delimiter = dataIn.readChar();   // Person, Student, Worker 구분자 읽기
+     if(delimiter=='P')
+         return new Person(dataIn);
+     else if(delimiter == 'S')
+    	 return new Student(dataIn);
+     else if(delimiter == 'W')
+    	 return new Worker(dataIn);
+     
+     System.out.println(delimiter + ": WRONG delimiter");
+     return null;
+     /* ToDo
+     사람 구분자가 'P'가 아닌 경우 Student, Worker 대해서도 위처럼 체크하고 
+         적절한 객체를 생성하고 멤버 데이타를 파일로부터 읽어 들인 후 해당 객체를 리턴하라.
+     잘못된 사람 구분자인 경우 delimiter와 ": WRONG delimiter"를 출력하고 null을 리턴하라.
      */
  }
  static public void outputPerson(DataOutputStream dataOut, Person p) throws IOException { 
@@ -2488,6 +2526,7 @@ class FileManager extends PersonGenerator  // ch8_1
 {
     static final String HOME_DIR = "data"; // 상수 정의: 파일들을 생성할 폴더 이름
     static final String TEXT_PATH_NAME = HOME_DIR+"/persons.txt"; // 8_3
+    static final String BINARY_PATH_NAME = HOME_DIR+"/persons.bin"; // 8_4
     private List< Person > list;
     
     FileManager(List< Person > list) { 
@@ -2844,9 +2883,13 @@ class FileManager extends PersonGenerator  // ch8_1
     	
     	BufferedOutputStream bufOut =  new BufferedOutputStream(fileOut, 1024*8);
     	
-    	for(var p : list) {
-    		Factory.outputPerson(null, p);
-    	}
+    	DataOutputStream dataOut = new DataOutputStream(bufOut);
+    	for(var p : list)
+    		Factory.outputPerson(dataOut, p);
+    	
+    	dataOut.close();
+    	fileList();
+    	
         /* ToDo: 
         강의노트 끝 부분의 "바이너리 파일에 기본 타입 변수들 쓰기" 페이지를 참고하여
         // 바이트 단위의 데이타를 실제 파일에 기록하는 객체
@@ -2867,13 +2910,75 @@ class FileManager extends PersonGenerator  // ch8_1
         data 디렉터리의 모든 파일 목록을 보여 준다.
         */ 
     }
+    void loadBinaryFile(String pathName) throws IOException {  // 8_4
+    	FileInputStream fileIn = new FileInputStream(pathName);
+    	
+    	BufferedInputStream bufIn = new BufferedInputStream(fileIn);
+    	
+    	DataInputStream dataIn = new DataInputStream(bufIn);
+    	
+    	list.clear();
+        while (true) {
+            try { 
+            	Person p = Factory.inputPerson(dataIn);
+            	if(p != null)
+            		list.add(p); 
+            }
+            catch (EOFException e) { // DataInputStream에서 파일 끝까지 다  
+                break;               // 읽었는데 또 읽으라고 요청하면 이 예외를 발생시킴.
+            } // 중요: 이 예외을 이용해 파일을 다 읽었는지 판단하고 while을 빠져 나감
+        }
+        dataIn.close();
+        display();
+        /* ToDo: 
+        강의노트 끝 부분의 "바이너리 파일에 기본 타입 변수들 읽기" 페이지를 참고하여
+        // 바이트 단위로 데이타를 파일에서 읽어 들이는 객체
+        pathName을 주고 FileInputStream 객체 fileIn을 생성한다. 
+
+        // 8KB 버퍼를 가진 버퍼링 객체: 
+        // fileIn에서 미리 데이터를 읽어 내 버퍼에 저장하고 있으며 
+        // 아래 dataIn은 이 버퍼에서 읽어감
+        // 강의노트 "BufferedInputStream / BufferedOutputStream" 페이지 참고
+        fileIn을 주고 BufferedInputStream 객체 bufIn을 생성한다.
+
+        // 여러 바이트들을 읽은 후 조합해서 하나의 멤버 변수를 구성한 뒤 반환해 줌
+        bufIn을 주고 DataInputStream 객체 dataIn을 생성한다.
+
+        list의 객체들을 모두 삭제한다.
+        while (true) {
+            try { 
+                Factory의 inputPerson(DataInputStream)을 호출하여
+                이진 파일에서 읽어 낸 한 사람 객체 p를 구한다.
+                p가 정상적인 객체라면(잘못된 사람 구분자가 아닌 경우) p를 list에 추가한다. 
+            }
+            catch (EOFException e) { // DataInputStream에서 파일 끝까지 다  
+                break;               // 읽었는데 또 읽으라고 요청하면 이 예외를 발생시킴.
+            } // 중요: 이 예외을 이용해 파일을 다 읽었는지 판단하고 while을 빠져 나감
+        }
+        dataIn 파일을 닫는다. // 이 문장이 내부적으로 bufIn, fileIn을 자동으로 닫아 준다.
+        list의 모든 객체를 화면에 보여 준다.
+        */ 
+    }
     void saveBinary() throws IOException { // menu item 17: 8_4
+    	saveBinaryFile(BINARY_PATH_NAME);
     }
     void loadBinary() throws IOException { // menu item 18: 8_4
+    	loadBinaryFile(BINARY_PATH_NAME);
     }
     void saveBinaryAs() throws IOException { // menu item 19: 8_4
+    	 String fileName = getNewFilePath("binary");
+    	 if(fileName != null)
+    		 saveBinaryFile(fileName);
+    	 else
+    		 return;
+    	
     }
     void loadBinaryFrom() throws IOException { // menu item 20: 8_4
+    	File f = selectFile("binary", "load", false);
+    	if(f != null)
+    		loadBinaryFile(f.getPath());
+    	else
+    		return;
     }
 }  // ch8_1: FileManager class
 
